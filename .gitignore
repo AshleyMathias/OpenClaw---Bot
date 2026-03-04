@@ -1,0 +1,32 @@
+# Environment and secrets
+.env
+.env.local
+*.env
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.so
+.eggs/
+*.egg-info/
+*.egg
+
+# Vector DB and local data
+vector_db/
+
+# IDE and OS
+.idea/
+.vscode/
+.cursor/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
