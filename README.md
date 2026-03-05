@@ -4,7 +4,7 @@ An enterprise-grade AI chatbot that answers company policy questions, creates su
 
 ![OpenClaw chat interface](assets/chat-screenshot.png)
 
-*OpenClaw answering questions about safety policies and harassment policy from the company knowledge base. Now with document upload support for RAG!*
+*OpenClaw Enterprise AI Assistant with document upload feature. Upload documents (TXT, PDF, DOCX) directly through the UI to enhance the knowledge base for RAG-powered responses.*
 
 ## Features
 
