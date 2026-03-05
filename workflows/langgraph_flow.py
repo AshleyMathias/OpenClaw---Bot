@@ -12,7 +12,6 @@ class OpenClawState(TypedDict):
     history: List[dict]
 
 
-retriever = get_retriever()
 def rag_node(state: OpenClawState):
     user_input = state["user_input"]
     history = state["history"]
@@ -24,6 +23,15 @@ def rag_node(state: OpenClawState):
     messages.extend(history)
 
     messages.append({"role": "user", "content": user_input})
+
+    # Get a fresh retriever each time to ensure we see the latest documents
+    retriever = get_retriever()
+    
+    # Check if retriever is available
+    if retriever is None:
+        return {
+            "response": "The knowledge base is not available. Please upload documents first or contact support."
+        }
 
     docs = retriever.invoke(user_input)
     context = "\n".join([doc.page_content for doc in docs]).strip()
@@ -59,12 +67,11 @@ def detect_intent(state: OpenClawState):
     CHAT
     KNOWLEDGE
 
-    Use TOOL when the user asks about company database information like:
-    - employees
-    - departments
-    - salaries
-    - counts
-    - statistics
+    Use TOOL when the user:
+    - Wants to create a support ticket (laptop issues, software bugs, login problems, system failures)
+    - Wants to send a notification or alert
+    - Wants to generate a report
+    - Asks about company database information (employees, departments, salaries, counts, statistics)
 
     Use KNOWLEDGE for company policies or documentation.
 
@@ -81,10 +88,18 @@ def detect_intent(state: OpenClawState):
 def route_intent(state: OpenClawState):
     user_input = state["user_input"]
     intent = state["intent"]
+    user_lower = user_input.lower()
+    
     # Route to RAG for policy/handbook/leave questions even if model misclassifies
     knowledge_keywords = ("policy", "leave", "handbook", "remote work", "attendance", "conduct", "benefits", "hr ", "company ")
-    if any(kw in user_input.lower() for kw in knowledge_keywords):
+    if any(kw in user_lower for kw in knowledge_keywords):
         return "rag"
+    
+    # Route to agent for ticket creation, notifications, reports, and database queries
+    tool_keywords = ("create a ticket", "create ticket", "support ticket", "ticket for", "send notification", "send alert", "generate report", "create report", "employee", "department", "salary", "database")
+    if any(kw in user_lower for kw in tool_keywords):
+        return "agent"
+    
     if "TOOL" in intent:
         return "agent"
     if "KNOWLEDGE" in intent:

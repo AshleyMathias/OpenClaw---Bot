@@ -51,16 +51,17 @@ def add_documents(filename, file_bytes):
     docs = splitter.split_documents([Document(page_content=text)])
 
     # Check if vector store exists, if so load it and add documents, otherwise create new
-    if os.path.exists("vector_store"):
-        vectorstore = Chroma.load_local(
-            "vector_store",
-            embeddings,
-            allow_dangerous_deserialization=True
+    if os.path.exists("vector_store") and os.path.isdir("vector_store"):
+        vectorstore = Chroma(
+            persist_directory="vector_store",
+            embedding_function=embeddings
         )
         vectorstore.add_documents(docs)
     else:
-        vectorstore = Chroma.from_documents(docs, embeddings)
-
-    vectorstore.save_local("vector_store")
+        vectorstore = Chroma.from_documents(
+            docs, 
+            embeddings,
+            persist_directory="vector_store"
+        )
 
     return "File indexed successfully"
