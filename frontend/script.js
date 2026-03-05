@@ -101,3 +101,86 @@ getInput().addEventListener("keydown", function (e) {
         sendMessage();
     }
 });
+
+// File upload functionality
+let selectedFile = null;
+
+function getFileInput() {
+    return document.getElementById("file-input");
+}
+
+function getFileName() {
+    return document.getElementById("file-name");
+}
+
+function getRemoveFileBtn() {
+    return document.getElementById("remove-file-btn");
+}
+
+function removeFile() {
+    selectedFile = null;
+    getFileInput().value = "";
+    getFileName().textContent = "";
+    getRemoveFileBtn().style.display = "none";
+}
+
+async function uploadFile() {
+    if (!selectedFile) {
+        showError("Please select a file first.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    showTypingIndicator();
+    addMessage(`Uploading ${selectedFile.name}...`, "user");
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/upload", {
+            method: "POST",
+            body: formData,
+        });
+
+        removeTypingIndicator();
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            showError(`Upload failed: ${errorText || "Unknown error"}`);
+            return;
+        }
+
+        const data = await response.json();
+        const message = data.message || "File uploaded successfully";
+        
+        addMessage(message, "bot");
+        removeFile();
+    } catch (err) {
+        removeTypingIndicator();
+        showError("Could not upload file. Make sure the backend is running.");
+        console.error("Upload error:", err);
+    }
+}
+
+// File input change handler
+getFileInput().addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Validate file type
+        const validTypes = [".txt", ".pdf", ".docx"];
+        const fileExtension = "." + file.name.split(".").pop().toLowerCase();
+        
+        if (!validTypes.includes(fileExtension)) {
+            showError("Unsupported file type. Please upload .txt, .pdf, or .docx files.");
+            e.target.value = "";
+            return;
+        }
+
+        selectedFile = file;
+        getFileName().textContent = file.name;
+        getRemoveFileBtn().style.display = "flex";
+        
+        // Automatically upload the file
+        uploadFile();
+    }
+});

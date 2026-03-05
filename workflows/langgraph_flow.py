@@ -51,7 +51,26 @@ def detect_intent(state: OpenClawState):
     prompt = [
         {
             "role": "system",
-            "content": "You classify user intent. Reply with exactly one word: TOOL, CHAT, or KNOWLEDGE. Use TOOL for requests to create tickets, send notifications, generate reports. Use KNOWLEDGE for questions about company policy, leave, handbook, procedures, or anything that might be in internal documents. Use CHAT for general conversation.",
+            "content": """
+            You classify user intent.
+
+    Return ONLY one word:
+    TOOL
+    CHAT
+    KNOWLEDGE
+
+    Use TOOL when the user asks about company database information like:
+    - employees
+    - departments
+    - salaries
+    - counts
+    - statistics
+
+    Use KNOWLEDGE for company policies or documentation.
+
+    Use CHAT for normal conversation.
+
+            """,
         },
         {"role": "user", "content": user_input},
     ]

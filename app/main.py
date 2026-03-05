@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+import monitoring.langsmith_config
 from app.api_routes import router
 from fastapi.middleware.cors import CORSMiddleware
 

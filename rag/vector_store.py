@@ -1,25 +1,66 @@
-from pathlib import Path
-
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import TextLoader
+from langchain_core.documents import Document
+from llm.openai_client import embeddings
+from langchain_community.vectorstores import Chroma
 
-# Paths relative to this file: rag/vector_store.py -> project root = parent.parent
-_RAG_DIR = Path(__file__).resolve().parent
-_PROJECT_ROOT = _RAG_DIR.parent
-POLICY_PATH = _RAG_DIR / "knoweldge" / "company_policy.txt"  # folder name has typo "knoweldge"
-VECTOR_DB_PATH = str(_PROJECT_ROOT / "vector_db")
+import tempfile
+import os
 
 
-def create_vector_store():
-    loader = TextLoader(str(POLICY_PATH))
-    documents = loader.load()
+def add_documents(filename, file_bytes):
 
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    docs = splitter.split_documents(documents)
+    # Save file temporarily
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    temp_file.write(file_bytes)
+    temp_file.close()
 
-    embeddings = OpenAIEmbeddings()
-    vector_store = Chroma.from_documents(docs, embeddings, persist_directory=VECTOR_DB_PATH)
-    return vector_store
+    text = ""
 
+    # Load depending on file type
+    if filename.endswith(".txt"):
+
+        with open(temp_file.name, "r", encoding="utf-8") as f:
+            text = f.read()
+
+    elif filename.endswith(".pdf"):
+
+        from pypdf import PdfReader
+        reader = PdfReader(temp_file.name)
+
+        for page in reader.pages:
+            text += page.extract_text()
+
+    elif filename.endswith(".docx"):
+
+        import docx
+        doc = docx.Document(temp_file.name)
+
+        for para in doc.paragraphs:
+            text += para.text + "\n"
+
+    else:
+        return "Unsupported file type"
+
+    os.unlink(temp_file.name)
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=100
+    )
+
+    docs = splitter.split_documents([Document(page_content=text)])
+
+    # Check if vector store exists, if so load it and add documents, otherwise create new
+    if os.path.exists("vector_store"):
+        vectorstore = Chroma.load_local(
+            "vector_store",
+            embeddings,
+            allow_dangerous_deserialization=True
+        )
+        vectorstore.add_documents(docs)
+    else:
+        vectorstore = Chroma.from_documents(docs, embeddings)
+
+    vectorstore.save_local("vector_store")
+
+    return "File indexed successfully"

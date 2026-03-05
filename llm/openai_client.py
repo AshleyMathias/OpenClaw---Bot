@@ -2,6 +2,7 @@ import os
 from openai import OpenAI
 from llm.prompts import System_Prompt
 from dotenv import load_dotenv
+import monitoring.langsmith_config
 from config.settings import MODEL_NAME, TEMPERATURE
 
 load_dotenv()
