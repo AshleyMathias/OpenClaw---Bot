@@ -11,6 +11,18 @@ const sendBtn = document.getElementById("send-btn");
 const newChatBtn = document.getElementById("new-chat-btn");
 const fileInput = document.getElementById("file-input");
 const uploadStatus = document.getElementById("upload-status");
+const sidebar = document.getElementById("sidebar");
+const sidebarToggle = document.getElementById("sidebar-toggle");
+const closeSidebarBtn = document.getElementById("close-sidebar-btn");
+const sidebarOverlay = document.getElementById("sidebar-overlay");
+const micBtn = document.getElementById("mic-btn");       // STT only
+const vaBtn = document.getElementById("va-btn");           // Full voice assistant (continuous loop)
+const voiceBanner = document.getElementById("voice-banner");
+const voiceBannerText = document.getElementById("voice-banner-text");
+const voiceStopBtn = document.getElementById("voice-stop-btn");
+
+// Tracks whether current message came from Voice Assistant (auto-speak reply)
+let voiceTriggered = false;
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
@@ -58,6 +70,12 @@ async function sendMessage() {
         // Add AI response to chat
         addMessage(aiResponse, "ai");
 
+        // If the question came from voice, speak the response back
+        if (voiceTriggered) {
+            voiceTriggered = false;
+            speakResponse(aiResponse);
+        }
+
     } catch (error) {
         removeTypingIndicator();
         console.error("Error sending message:", error);
@@ -66,6 +84,12 @@ async function sendMessage() {
         sendBtn.disabled = false;
         messageInput.focus();
     }
+}
+
+// Format timestamp helper
+function getTimestamp() {
+    const now = new Date();
+    return now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 // Add Message to Chat
@@ -174,7 +198,39 @@ function addMessage(text, type, isError = false) {
         bubble.textContent = text;
     }
 
-    messageDiv.appendChild(bubble);
+    // Wrap bubble + meta in inner container
+    const inner = document.createElement("div");
+    inner.className = "message-inner";
+    inner.appendChild(bubble);
+
+    // Meta row: timestamp + copy button (AI messages only)
+    const meta = document.createElement("div");
+    meta.className = "message-meta";
+
+    const timestamp = document.createElement("span");
+    timestamp.className = "message-timestamp";
+    timestamp.textContent = getTimestamp();
+    meta.appendChild(timestamp);
+
+    if (type === "ai" && !isError) {
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "copy-btn";
+        copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+        copyBtn.addEventListener("click", () => {
+            navigator.clipboard.writeText(text).then(() => {
+                copyBtn.textContent = "Copied!";
+                copyBtn.classList.add("copied");
+                setTimeout(() => {
+                    copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+                    copyBtn.classList.remove("copied");
+                }, 2000);
+            });
+        });
+        meta.appendChild(copyBtn);
+    }
+
+    inner.appendChild(meta);
+    messageDiv.appendChild(inner);
     chatMessages.appendChild(messageDiv);
 
     // Auto scroll to bottom
@@ -311,3 +367,224 @@ fileInput.addEventListener("keydown", (e) => {
         e.preventDefault();
     }
 });
+
+// Sidebar Toggle Logic
+function toggleSidebar() {
+    if (window.innerWidth <= 768) {
+        // Mobile behavior
+        sidebar.classList.toggle("open");
+        sidebarOverlay.classList.toggle("show");
+    } else {
+        // Desktop behavior
+        sidebar.classList.toggle("collapsed");
+    }
+}
+
+function closeSidebar() {
+    if (window.innerWidth <= 768) {
+        sidebar.classList.remove("open");
+        sidebarOverlay.classList.remove("show");
+    }
+}
+
+sidebarToggle.addEventListener("click", toggleSidebar);
+closeSidebarBtn.addEventListener("click", closeSidebar);
+sidebarOverlay.addEventListener("click", closeSidebar);
+
+// Close sidebar on window resize if switching from mobile to desktop
+window.addEventListener("resize", () => {
+    if (window.innerWidth > 768) {
+        sidebar.classList.remove("open");
+        sidebarOverlay.classList.remove("show");
+    }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// 1.  MIC BUTTON — Speech-to-text only. Fills the input box. User sends manually.
+// ══════════════════════════════════════════════════════════════════════════
+(function initMicDictation() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) { micBtn.style.display = "none"; return; }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    let active = false;
+
+    recognition.onresult = (event) => {
+        let t = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            t += event.results[i][0].transcript;
+        }
+        messageInput.value = t;
+    };
+
+    recognition.onend = () => {
+        active = false;
+        micBtn.classList.remove("recording");
+        messageInput.focus();
+    };
+
+    recognition.onerror = () => {
+        active = false;
+        micBtn.classList.remove("recording");
+    };
+
+    micBtn.addEventListener("click", () => {
+        if (active) {
+            recognition.stop();
+        } else {
+            active = true;
+            messageInput.value = "";
+            micBtn.classList.add("recording");
+            recognition.start();
+        }
+    });
+})();
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// 2.  VOICE ASSISTANT BUTTON — Continuous loop: listen → send → speak → listen…
+//     Runs until the user clicks the button again or presses Stop.
+// ══════════════════════════════════════════════════════════════════════════
+(function initVoiceAssistant() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) { vaBtn.style.display = "none"; return; }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;   // one utterance at a time; we restart manually
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    let vaActive = false;
+
+    // ── Banner helpers ────────────────────────────────────────────────────
+    function showBanner(state) {
+        voiceBanner.classList.remove("hidden", "speaking");
+        if (state === "listening") {
+            voiceBannerText.textContent = "Listening… speak now";
+        } else if (state === "thinking") {
+            voiceBannerText.textContent = "Processing your request…";
+        } else if (state === "speaking") {
+            voiceBanner.classList.add("speaking");
+            voiceBannerText.textContent = "OpenClaw is speaking…";
+        }
+    }
+
+    // ── Stop everything ───────────────────────────────────────────────────
+    function stopVA() {
+        vaActive = false;
+        voiceTriggered = false;
+        try { recognition.abort(); } catch (_) {}
+        voiceBanner.classList.add("hidden");
+        vaBtn.classList.remove("active");
+        vaBtn.title = "Voice Assistant — continuously listens and speaks until stopped";
+    }
+
+    // ── Start a single listen cycle ───────────────────────────────────────
+    function listenCycle() {
+        if (!vaActive) return;
+        messageInput.value = "";
+        showBanner("listening");
+        try { recognition.start(); } catch (_) {}
+    }
+
+    // ── Toggle VA on button click ─────────────────────────────────────────
+    vaBtn.addEventListener("click", () => {
+        if (vaActive) {
+            stopVA();
+        } else {
+            vaActive = true;
+            vaBtn.classList.add("active");
+            vaBtn.title = "Stop Voice Assistant";
+            listenCycle();
+        }
+    });
+
+    // ── Stop button in the banner ─────────────────────────────────────────
+    voiceStopBtn.addEventListener("click", stopVA);
+
+    // ── Capture speech result ─────────────────────────────────────────────
+    recognition.onresult = (event) => {
+        let t = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            t += event.results[i][0].transcript;
+        }
+        messageInput.value = t;
+    };
+
+    // ── Utterance finished — send if we got text, else re-listen ─────────
+    recognition.onend = () => {
+        if (!vaActive) return;
+        const text = messageInput.value.trim();
+        if (text) {
+            showBanner("thinking");
+            voiceTriggered = true;   // tells sendMessage to call speakResponse
+            sendMessage();           // after send, speakResponse → restarts loop
+        } else {
+            // No speech detected, just listen again
+            setTimeout(listenCycle, 400);
+        }
+    };
+
+    recognition.onerror = (e) => {
+        if (e.error === "not-allowed") {
+            voiceBannerText.textContent = "Microphone access denied.";
+            setTimeout(stopVA, 2500);
+        } else if (e.error === "no-speech") {
+            // Silently restart
+            if (vaActive) setTimeout(listenCycle, 400);
+        } else {
+            // On other errors keep trying unless user stopped
+            if (vaActive) setTimeout(listenCycle, 1000);
+        }
+    };
+
+    // Expose helpers for speakResponse
+    window._vaShowBanner = showBanner;
+    window._vaStop = stopVA;
+    window._vaListenCycle = listenCycle;
+    window._vaIsActive = () => vaActive;
+})();
+
+
+// ── TTS: send AI text to backend /speak, then restart listening loop ────────
+async function speakResponse(text) {
+    const cleanText = text
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+        .replace(/charts\/[a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg)/gi, "")
+        .trim();
+
+    if (!cleanText) {
+        // Nothing to speak — restart listening immediately if VA still active
+        if (window._vaIsActive && window._vaIsActive()) {
+            setTimeout(window._vaListenCycle, 400);
+        }
+        return;
+    }
+
+    if (window._vaShowBanner) window._vaShowBanner("speaking");
+
+    // Estimate reading time so we can restart listening after TTS finishes
+    const wordCount = cleanText.split(/\s+/).length;
+    const estimatedMs = Math.max(2000, (wordCount / 2.5) * 1000);
+
+    try {
+        await fetch(`${API_BASE_URL}/speak`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: cleanText })
+        });
+    } catch (e) {
+        console.error("[VA] /speak request failed:", e);
+    } finally {
+        // After speaking (estimated time), restart the listen cycle if VA is still active
+        setTimeout(() => {
+            if (window._vaIsActive && window._vaIsActive()) {
+                window._vaListenCycle();
+            } else if (window._vaStop) {
+                window._vaStop();
+            }
+        }, estimatedMs);
+    }
+}
