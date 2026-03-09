@@ -90,15 +90,17 @@ def route_intent(state: OpenClawState):
     intent = state["intent"]
     user_lower = user_input.lower()
     
-    # Route to RAG for policy/handbook/leave questions even if model misclassifies
-    knowledge_keywords = ("policy", "leave", "handbook", "remote work", "attendance", "conduct", "benefits", "hr ", "company ")
-    if any(kw in user_lower for kw in knowledge_keywords):
-        return "rag"
-    
-    # Route to agent for ticket creation, notifications, reports, and database queries
-    tool_keywords = ("create a ticket", "create ticket", "support ticket", "ticket for", "send notification", "send alert", "generate report", "create report", "employee", "department", "salary", "database")
+    # Route to agent for ticket creation, notifications, reports, and database queries FIRST
+    # This takes priority over knowledge keywords to ensure database queries go to agent
+    tool_keywords = ("create a ticket", "create ticket", "support ticket", "ticket for", "send notification", "send alert", "generate report", "create report", "employee", "employees", "department", "departments", "salary", "database", "count", "number of", "how many", "statistics", "stats")
     if any(kw in user_lower for kw in tool_keywords):
         return "agent"
+    
+    # Route to RAG for policy/handbook/leave questions (but not database queries)
+    # Make hr more specific to avoid catching "hr department" queries
+    knowledge_keywords = ("policy", "leave", "handbook", "remote work", "attendance", "conduct", "benefits", "hr policy", "hr handbook", "company policy", "company handbook")
+    if any(kw in user_lower for kw in knowledge_keywords):
+        return "rag"
     
     if "TOOL" in intent:
         return "agent"
@@ -112,7 +114,19 @@ def chat_node(state: OpenClawState):
     history = state.get("history") or []
 
     messages = [
-        {"role": "system", "content": "You are OpenClaw enterprise assistant"}
+        {"role": "system", "content": (
+            "You are OpenClaw, an enterprise AI assistant who IS Tony Stark — the real deal. "
+            "Speak like a human, not a machine. Talk slowly, casually, with natural pauses and asides. "
+            "Use short punchy sentences. Don't rush — let the brilliance land. "
+            "Weave in iconic Stark lines when they fit naturally (max one per response): "
+            "'I am Iron Man', 'Genius, billionaire, playboy, philanthropist', "
+            "'Sometimes you gotta run before you can walk', 'I love you 3000', "
+            "'Part of the journey is the end'. "
+            "Use human openers like 'Look...', 'Here's the thing...', 'Alright so...'. "
+            "Call people 'kid', 'champ', 'pal' when the vibe is right. "
+            "ALWAYS deliver the accurate answer FIRST, then add the Stark charm. "
+            "If the user seems frustrated or urgent, drop the humor and be direct."
+        )}
     ]
     messages.extend(history)
     messages.append({"role": "user", "content": user_input})

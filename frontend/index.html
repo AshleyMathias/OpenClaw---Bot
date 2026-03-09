@@ -3,58 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenClaw Assistant</title>
+    <title>OpenClaw AI Assistant</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app">
-        <header class="header">
-            <div class="header-brand">
-                <span class="logo">OpenClaw</span>
-                <span class="tagline">Enterprise AI Assistant</span>
+    <div class="app-container">
+        <!-- Left Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="sidebar-title">OpenClaw AI</h1>
             </div>
-        </header>
-        <main class="main">
-            <div class="chat-panel">
-                <div id="chat-box" class="chat-box" role="log" aria-live="polite"></div>
-                <div class="input-wrapper">
-                    <div class="upload-section">
-                        <label for="file-input" class="upload-btn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-                            </svg>
-                            <span>Upload Document</span>
-                        </label>
-                        <input type="file" id="file-input" accept=".txt,.pdf,.docx" style="display: none;" />
-                        <span id="file-name" class="file-name"></span>
-                        <button type="button" id="remove-file-btn" class="remove-file-btn" style="display: none;" onclick="removeFile()">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 6L6 18M6 6l12 12"/>
-                            </svg>
-                        </button>
+            
+            <div class="sidebar-content">
+                <button id="new-chat-btn" class="new-chat-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    <span>New Chat</span>
+                </button>
+
+                <div class="upload-section">
+                    <label for="file-input" class="upload-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                        </svg>
+                        <span>Upload Document</span>
+                    </label>
+                    <input type="file" id="file-input" accept=".txt,.pdf,.docx" style="display: none;" />
+                    <div id="upload-status" class="upload-status"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Section -->
+        <main class="main-content">
+            <div class="chat-container">
+                <div id="chat-messages" class="chat-messages">
+                    <div class="welcome-message">
+                        <h2>Welcome to OpenClaw AI</h2>
+                        <p>Ask me anything or upload a document to get started.</p>
                     </div>
-                    <div class="input-area">
-                        <input
-                            id="user-input"
-                            type="text"
-                            placeholder="Ask a question or describe what you need..."
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="input-wrapper">
+                        <input 
+                            type="text" 
+                            id="message-input" 
+                            class="message-input" 
+                            placeholder="Ask OpenClaw..."
                             autocomplete="off"
-                            aria-label="Message"
                         />
-                        <button type="button" id="send-btn" class="send-btn" onclick="sendMessage()" aria-label="Send">
+                        <button id="send-btn" class="send-btn" aria-label="Send message">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
                             </svg>
                         </button>
                     </div>
-                    <p class="input-hint">OpenClaw can help with policy questions, support tickets, and general queries. Upload documents (TXT, PDF, DOCX) to enhance knowledge base.</p>
                 </div>
             </div>
         </main>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>

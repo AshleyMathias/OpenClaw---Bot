@@ -8,4 +8,4 @@ LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY")
 DATABASE_URL = "postgresql://postgres:877002@localhost:5433/openclaw_company"
 
 MODEL_NAME = "gpt-4o-mini"
-TEMPERATURE = 0.2
+TEMPERATURE = 0.4
