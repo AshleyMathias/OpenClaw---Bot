@@ -10,6 +10,7 @@ An enterprise-grade AI chatbot that answers company policy questions, creates su
 
 - **📤 Document Upload** *(NEW)* — Upload documents (TXT, PDF, DOCX) directly through the UI to enhance the RAG knowledge base. Documents are automatically indexed and made searchable.
 - **🧠 Intent-based routing** — Classifies queries as CHAT, KNOWLEDGE (policy/docs), or TOOL (tickets, notifications, reports) and routes to the right handler.
+- **⚙️ Dynamic Workflow Builder** *(NEW)* — Automatically generates and executes multi-step workflows based on user requests using a Planner Agent. Tools are dynamically assembled into LangGraph StateGraphs on the fly.
 - **🔍 RAG over company policy** — Retrieves answers from your policy handbook (e.g. leave, safety, conduct, remote work) using a vector store (Chroma).
 - **🛠️ Tool use** — Create support tickets, send notifications, and generate reports via the OpenClaw agent.
 - **💬 Conversation memory** — Session-based history so the assistant keeps context within a conversation.
@@ -25,8 +26,9 @@ An enterprise-grade AI chatbot that answers company policy questions, creates su
 ├── llm/                 # OpenAI client and prompts
 ├── memory/              # Session memory
 ├── rag/                 # Retriever and vector store (Chroma)
-├── tools/               # Automation tools (tickets, notifications, reports)
+├── tools/               # Automation tools (tickets, notifications, reports, database queries)
 ├── workflows/           # LangGraph flow (intent → chat / RAG / agent)
+├── workflow_manager/    # Dynamic workflow builder (planner agent, node registry, node adapter)
 └── build_vector_store.py  # Script to index company policy into the vector DB
 ```
 
@@ -108,6 +110,15 @@ file: [your-document.pdf]
 - **Backend:** FastAPI, LangGraph, LangChain, OpenAI
 - **RAG:** Chroma (`langchain-chroma`), OpenAI embeddings
 - **Frontend:** Vanilla JS, CSS (Inter font, responsive layout)
+
+## Dynamic Workflows
+
+OpenClaw features a **Dynamic Workflow Builder** capable of stringing together multiple tools into a cohesive LangGraph StateGraph based on a single user prompt. 
+- **Planner Agent:** Analyzes complex requests and generates a JSON plan containing sequential steps.
+- **Node Registry:** Maps standard LangChain tools into compatible LangGraph nodes using the `NodeAdapter`.
+- **Workflow Builder:** Dynamically compiles the `StateGraph` from the planned steps and executes it.
+
+For example, a prompt like *"Analyze our employee counts by department, make a pie chart, create an alert about the imbalance in Marketing, and draft a notification to the CEO"* will result in a dynamically built multi-step pipeline executing entirely in the background.
 
 ## License
 

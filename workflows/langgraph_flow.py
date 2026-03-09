@@ -16,14 +16,6 @@ def rag_node(state: OpenClawState):
     user_input = state["user_input"]
     history = state["history"]
 
-    messages=[
-        {"role": "system", "content": "You are OpenClaw enterprise asssiatnt"}
-    ]
-
-    messages.extend(history)
-
-    messages.append({"role": "user", "content": user_input})
-
     # Get a fresh retriever each time to ensure we see the latest documents
     retriever = get_retriever()
     
@@ -45,12 +37,19 @@ def rag_node(state: OpenClawState):
         {
             "role": "system",
             "content": "You are OpenClaw. Answer the user's question using ONLY the provided context. Do not say the context does not include information if the answer is in the context. If the context does not contain the answer, say so briefly.",
-        },
+        }
+    ]
+    
+    if history:
+        prompt.extend(history)
+        
+    prompt.append(
         {
             "role": "user",
             "content": f"Context:\n{context}\n\nQuestion: {user_input}",
-        },
-    ]
+        }
+    )
+    
     response = "".join(generate_response(prompt))
     return {"response": response}
 
@@ -138,8 +137,9 @@ def chat_node(state: OpenClawState):
 def agent_node(state: OpenClawState):
 
     user_input = state["user_input"]
+    history = state.get("history") or []
 
-    result = run_openclaw_agent(user_input)
+    result = run_openclaw_agent(user_input, history=history)
 
     return {"response": result}
 

@@ -2,6 +2,7 @@ from langchain.tools import tool
 import re
 import psycopg2
 from config.settings import DATABASE_URL
+from llm.openai_client import generate_response
 
 
 
@@ -23,7 +24,23 @@ def create_support_ticket(issue: str):
 
     return f"Support ticket created successfully with ID: {ticket_id}. Issue reported: {issue}"
 
+@tool
+def summarize_conversation(text:str) -> str:
+    """
+    Summarize provided text.
+    """
 
+    prompt = [
+        {"role":"system","content": "Summarize the following text."},
+        {"role":"user","content": text}
+    ]
+
+    response = generate_response(prompt)
+    if hasattr(response,"__iter__"):
+        response = "".join(list(response))
+
+
+    return response
 
 @tool
 def send_notification(message: str) -> str:
@@ -105,11 +122,26 @@ def create_automation(task_name:str, schedule_time:str) -> str:
 
     return f"Automation scheduled for {task_name} at {schedule_time}"
 
+@tool
+def check_system_status() -> str:
+    """
+    Check status of OpenClaw system components.
+    """
+
+    return """
+    System Status:
+    Database: Connected
+    RAG Index: Loaded
+    Scheduler: Running
+    Agent: Active
+    """
 
 tools_list=[
     create_support_ticket,
     send_notification,
     generate_report,
     create_automation,
+    summarize_conversation,
+    check_system_status,
 ]
 

@@ -1,6 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 from tools.database_tools import database_tools_list
 from tools.automation_tools import tools_list
@@ -11,7 +11,9 @@ You speak like a real human — relaxed, unhurried, conversational.
 
 When users ask to:
 - Create a support ticket (for laptop issues, software bugs, login problems, etc.) → Use the create_support_ticket tool
-- Send a notification or alert → Use the send_notification tool  
+- Send a notification → Use the send_notification tool
+- Create a system alert → Use the create_alert tool
+- Check system status → Use the check_system_status tool
 - Generate a report → Use the generate_report tool
 - Query database information → Use the appropriate database tool
 
@@ -36,11 +38,20 @@ llm = ChatOpenAI(model=MODEL_NAME, temperature=TEMPERATURE)
 agent = create_react_agent(llm, all_tools)
 
 
-def run_openclaw_agent(user_input: str) -> str:
+def run_openclaw_agent(user_input: str, history: list = None) -> str:
     messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=user_input),
+        SystemMessage(content=SYSTEM_PROMPT)
     ]
+    
+    if history:
+        for msg in history:
+            if msg["role"] == "user":
+                messages.append(HumanMessage(content=msg["content"]))
+            elif msg["role"] == "assistant" or msg["role"] == "ai":
+                messages.append(AIMessage(content=msg["content"]))
+                
+    messages.append(HumanMessage(content=user_input))
+    
     result = agent.invoke({"messages": messages})
     reply_messages = result.get("messages", [])
     if not reply_messages:

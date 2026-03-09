@@ -14,7 +14,108 @@ def get_connection():
     conn = psycopg2.connect(DATABASE_URL)
     return conn
 
+@tool
+def create_task(task_title: str, description:str) -> str:
+    """
+    Create a task for internal workflow tracking.
+    """
 
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Ensure the table exists
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            description TEXT
+        )
+    """)
+
+    cursor.execute(
+        """
+        INSERT INTO tasks (title, description)
+        VALUES (%s, %s)
+        RETURNING id;
+        """,
+        (task_title, description)
+    )
+
+    task_id = cursor.fetchone()[0]
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return f"Task created with ID {task_id}"
+
+
+@tool
+def create_reminder(message:str, schedule_time:str) -> str:
+    """
+    Create a reminder to be truggered later.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Ensure the table exists (using similar schema as automations)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS automations (
+            id SERIAL PRIMARY KEY,
+            task_name VARCHAR(255) NOT NULL,
+            schedule_type VARCHAR(50) NOT NULL DEFAULT 'daily',
+            schedule_time VARCHAR(20) NOT NULL
+        )
+    """)
+
+    cursor.execute(
+        """
+        INSERT INTO automations (task_name, schedule_time)
+        VALUES (%s, %s)
+        """,
+        ("reminder", schedule_time)
+    )
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return f"Reminder scheduled at {schedule_time}"
+
+@tool
+def create_alert(message: str, severity: str) -> str:
+    """
+    Create a system alert with severity level.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Ensure the table exists
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS alerts (
+            id SERIAL PRIMARY KEY,
+            message TEXT NOT NULL,
+            severity VARCHAR(50) NOT NULL
+        )
+    """)
+
+    cursor.execute(
+        """
+        INSERT INTO alerts (message, severity)
+        VALUES (%s, %s)
+        """,
+        (message, severity)
+    )
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return "Alert created successfully"
 
 @tool
 def generate_chart(question: str) -> str:
@@ -249,4 +350,13 @@ def query_company_database(question: str) -> str:
 
     return str(results)
 
-database_tools_list = [get_employee_details, query_company_database, count_employees, get_employees_by_department, department_employee_count, generate_chart]
+database_tools_list = [
+get_employee_details, 
+query_company_database, 
+count_employees, 
+get_employees_by_department, 
+department_employee_count, 
+generate_chart, 
+create_task, 
+create_reminder, 
+create_alert]

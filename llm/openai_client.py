@@ -1,16 +1,11 @@
-import os
 from openai import OpenAI
-from llm.prompts import System_Prompt
-from dotenv import load_dotenv
 import monitoring.langsmith_config
-from config.settings import MODEL_NAME, TEMPERATURE
+from config.settings import MODEL_NAME, TEMPERATURE, OPENAI_API_KEY
 from langchain_openai import OpenAIEmbeddings
 
-load_dotenv()
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY"))
+embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
 
 def generate_response(message):
     response = openai_client.chat.completions.create(
